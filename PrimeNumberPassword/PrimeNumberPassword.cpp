@@ -35,10 +35,14 @@
 
 using namespace std;
 
-vector<int> primenumbers;
+int INF = 9999999;
+int MIN(int a, int b) { return (a > b) ? b : a; }
 int testNum;
 int fromPrime;//1,000 ≤ 소수 ≤ 9,999
 int toPrime;//1,000 ≤ 소수 ≤ 9,999
+
+int dpTable[10000][4][10];//[각숫자에서][해당자릿수를][이 숫자로 바꿨을때의] 목표 소수까지의 최소 변환 횟수
+int isChecked[10000][4][10][1];//이미 체크가 시작된 숫자인지 여부
 
 bool isPrimeNum(int n) {  
   if (n <= 1) return false;//1은 소수가 아니다
@@ -52,22 +56,99 @@ bool isPrimeNum(int n) {
   for (int div = 3; div <= sqrtn; div += 2) {
     if (n % div == 0) return false;
   }
+
+  return true;
+}
+
+void initTable() {
+  for (int i = 0; i < 10000; i++) {
+    for (int j = 0; j < 4; j++) {
+      for (int k = 0; k < 10; k++) {
+        dpTable[i][j][k] = INF;
+        isChecked[i][j][k][0] = 0;
+      }
+    }
+  }
+}
+
+int DPFunc(int previousPrime, int position, int changeNo) {//previousPrime : 이 숫자의 : position 에 해당하는 자릿수의 숫자를 changeNo 로바꿨을때에 ret : 목표 소수에 도달하는 최소 횟수
+  isChecked[previousPrime][position][changeNo][0] = 1;
+
+  //기저사례
+
+  //Memoization 된 값 ret
+  int &ret = dpTable[previousPrime][position][changeNo];
+
+  if (ret != INF) {
+    return ret;
+  }
+
+  //해당 자리의 숫자를 바꾸고 DP 를 돌려 본다. //이미 target 소수와 숫자가 같은 자릿수는 바꿀필요가 없다. 
+  int nextPrimeNum = 0;
+
+  switch(position) {
+    case 0:
+      if (changeNo == 0) return ret;//첫번째 자릿수는 0이 될수 없다.//문제 조건 (중간수는 4자리수여야 함)
+      nextPrimeNum = previousPrime % 1000 + changeNo * 1000;
+      if (toPrime / 1000 == previousPrime / 1000) return ret = INF;
+      break;
+    case 1:
+      nextPrimeNum = (previousPrime / 1000) * 1000 + (previousPrime % 100) + changeNo * 100;
+      if ((toPrime % 1000) / 100 == (previousPrime / 1000) / 100) return ret = INF;
+      break;
+    case 2:
+      nextPrimeNum = (previousPrime / 100) * 100 + previousPrime  % 10 + changeNo * 10;
+      if ((toPrime % 100) / 10 == (previousPrime / 100) / 10) return ret = INF;
+      break;
+    case 3:
+      nextPrimeNum = (previousPrime / 10) * 10 + changeNo;
+      if (toPrime % 10 == previousPrime % 10) return ret = INF;
+      break;
+  }
+
+  for (int j = 0; j < 4; j++) {//자릿수를 바꿔본다. 
+    if (position == j) continue;
+
+    for (int k = 0; k < 10; k++) {
+      if (isChecked[nextPrimeNum][j][k][0] == 1) {
+        continue;
+      }
+
+      if (!isPrimeNum(previousPrime)) {
+        continue;
+      }
+
+      ret = MIN(ret, DPFunc(nextPrimeNum, j, k));
+    }
+  }
+
+  return ret += 1;
 }
 
 int main() {
   freopen("sample_input.txt", "r", stdin);
-
-  for (int i = 1001; i < 9999; i+=2) {
-    if (isPrimeNum(i)) {
-      primenumbers.push_back(i);
-    }
-  }
-
   scanf("%d", &testNum);
 
   for (int i = 0; i < testNum; i++) {
+    initTable();
     scanf("%d %d", &fromPrime, &toPrime);
 
+    for (int j = 0; j < 4; j++) {
+      for (int k = 0; k < 10; k++) {
+        dpTable[toPrime][j][k] = 0;
+      }
+    }
 
+    int retVal = INF;
+
+    for (int j = 0; j < 4; j++) {
+      for (int k = 0; k < 10; k++) {
+        retVal = MIN(retVal, DPFunc(fromPrime, j, k));
+      }
+    }
+
+    printf("%d\n", retVal);
   }
 }
+
+//모든 소수를 가지고 서로 바뀔수 있는 경우를 경로로 나타내고 다익스트라로 풀수도 있을 듯.
