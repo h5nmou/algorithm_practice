@@ -32,24 +32,33 @@
 #include <stdio.h>
 #include <functional>
 #include <vector>
+#include <queue>
+#include <math.h>
 
 using namespace std;
 
 int INF = 9999999;
-int MIN(int a, int b) { return (a > b) ? b : a; }
+typedef pair<int, int> PAIR;
+
 int testNum;
 int fromPrime;//1,000 ≤ 소수 ≤ 9,999
 int toPrime;//1,000 ≤ 소수 ≤ 9,999
 
-int dpTable[10000][4][10];//[각숫자에서][해당자릿수를][이 숫자로 바꿨을때의] 목표 소수까지의 최소 변환 횟수
-int isChecked[10000][4][10][1];//이미 체크가 시작된 숫자인지 여부
+vector<PAIR> primeNumMap[10000];
+priority_queue<PAIR, vector<PAIR>, greater<PAIR>> minQ;
 
-bool isPrimeNum(int n) {  
+bool primeNumCheck[10000];
+bool checked[10000];
+int minTouchnum[10000];
+
+bool isPrimeNum(int n) {  //해당 수가 소수인지 검사
   if (n <= 1) return false;//1은 소수가 아니다
   if (n == 2) return false;//2는 짝수중 유일하게 소수다
+  if (n == 5) return true;//5는 1의 자리가 5인 수중 유일하게 소수다
 
   //2를 제외한 모든 짝수는 소수가 아니다
   if (n % 2 == 0) return false;
+  if (n % 5 == 0) return false;//5를 제외하고 1의 자리가 5인 수는 소수가 아니다.
 
   //2를 제외했으니 3이상의 모든 홀수로 나눠본다.
   int sqrtn = int(sqrt(n));//홀수의 제곱근을 구한다 int 로 하였으니 제곱근보다 작은 정수가 나올것이다 이 숫자까지 진행하면서 나누어지면 소수가 아니다. 
@@ -60,95 +69,148 @@ bool isPrimeNum(int n) {
   return true;
 }
 
+bool checktwoOfPrimeNum(int a, int b) {//두소수가 한자릿수만 차이가 나는지 검사
+  //한자리수만 차이나는 것을 판단
+  int count = 0;
+
+  if (a / 1000 == b /1000) {//천자리 같으면
+    count++;
+  }
+
+  if ((a % 1000) / 100 == (b % 1000) / 100) {//백자리 같으면
+    count++;
+  }
+
+  if ((a % 100) / 10 == (b % 100) / 10) {//십자리 같으면
+    count++;
+  }
+
+  if (a % 10 == b % 10) {//일자리 같으면
+    count++;
+  }
+
+  if (count == 3) {
+    return true;
+  }
+  else {
+    return false;
+  }
+}
+
 void initTable() {
   for (int i = 0; i < 10000; i++) {
-    for (int j = 0; j < 4; j++) {
-      for (int k = 0; k < 10; k++) {
-        dpTable[i][j][k] = INF;
-        isChecked[i][j][k][0] = 0;
+    checked[i] = false;
+    minTouchnum[i] = INF;
+  }
+}
+
+void initMap() {//각각의 소수에 대해 한자리수만 차이가 나는 다른 소수들과의 연결선을 만들어 준다 
+  for (int i = 0; i < 10000; i++) {
+    if (i < 1000) {
+      primeNumCheck[i] = false;
+      continue;
+    }
+
+    if (isPrimeNum(i)) {//소수이면
+      primeNumCheck[i] = true;
+    }
+    else {
+      primeNumCheck[i] = false;
+    }
+  }
+
+  for (int j = 0; j < 10000; j++) {
+    if (primeNumCheck[j] == true) {
+      for (int k = 0; k < 10000; k++) {
+        if (primeNumCheck[k] == true) {
+          if (checktwoOfPrimeNum(j, k)) {//한 자리만 차이가 나는 소수인 경우
+            primeNumMap[j].push_back(PAIR(1, k));
+          }
+        }
       }
     }
   }
 }
 
-int DPFunc(int previousPrime, int position, int changeNo) {//previousPrime : 이 숫자의 : position 에 해당하는 자릿수의 숫자를 changeNo 로바꿨을때에 ret : 목표 소수에 도달하는 최소 횟수
-  isChecked[previousPrime][position][changeNo][0] = 1;
+void findAnswer() {//다익스트라 알고리즘 (이 문제에서는 경로값이 전부 1)
 
-  //기저사례
+  minTouchnum[fromPrime] = 0;//시작점으로의 거리는 0
+  minQ.push(PAIR(0, fromPrime));//MINQ에 시작점을 넣고 시작한다
 
-  //Memoization 된 값 ret
-  int &ret = dpTable[previousPrime][position][changeNo];
+  int curr;
+  while (!minQ.empty()) {//Q가 빌때까지 
+    do {
+      curr = minQ.top().second;
+      minQ.pop();
+    } while (!minQ.empty() && checked[curr]);//Queue 에서 꺼낸 곳을 이미 방문한 곳이면 무시한다
 
-  if (ret != INF) {
-    return ret;
-  }
+    if (checked[curr] == true) break;//Queue 가 empty 여서 빠져나온 경우라면 탈출
+    checked[curr] = true;//정점 방문
 
-  //해당 자리의 숫자를 바꾸고 DP 를 돌려 본다. //이미 target 소수와 숫자가 같은 자릿수는 바꿀필요가 없다. 
-  int nextPrimeNum = 0;
-
-  switch(position) {
-    case 0:
-      if (changeNo == 0) return ret;//첫번째 자릿수는 0이 될수 없다.//문제 조건 (중간수는 4자리수여야 함)
-      nextPrimeNum = previousPrime % 1000 + changeNo * 1000;
-      if (toPrime / 1000 == previousPrime / 1000) return ret = INF;
-      break;
-    case 1:
-      nextPrimeNum = (previousPrime / 1000) * 1000 + (previousPrime % 100) + changeNo * 100;
-      if ((toPrime % 1000) / 100 == (previousPrime / 1000) / 100) return ret = INF;
-      break;
-    case 2:
-      nextPrimeNum = (previousPrime / 100) * 100 + previousPrime  % 10 + changeNo * 10;
-      if ((toPrime % 100) / 10 == (previousPrime / 100) / 10) return ret = INF;
-      break;
-    case 3:
-      nextPrimeNum = (previousPrime / 10) * 10 + changeNo;
-      if (toPrime % 10 == previousPrime % 10) return ret = INF;
-      break;
-  }
-
-  for (int j = 0; j < 4; j++) {//자릿수를 바꿔본다. 
-    if (position == j) continue;
-
-    for (int k = 0; k < 10; k++) {
-      if (isChecked[nextPrimeNum][j][k][0] == 1) {
-        continue;
+    for (int i = 0; i < primeNumMap[curr].size(); i++) {//해당 정점과 연결된 곳들을 순회하며 경로값을 갱신해준다.
+      int next = primeNumMap[curr].at(i).second;
+      if (minTouchnum[next] > minTouchnum[curr]  + 1) {//새로 계산된 값이 기존 값보다 작으면 갱신
+        minTouchnum[next] = minTouchnum[curr] + 1;
       }
-
-      if (!isPrimeNum(previousPrime)) {
-        continue;
-      }
-
-      ret = MIN(ret, DPFunc(nextPrimeNum, j, k));
+      minQ.push(PAIR(minTouchnum[next], next));//정점까지의 거리와 점점 번호로 Pair를 만들어 Queue 에 넣어준다. 
     }
   }
 
-  return ret += 1;
+  //MINQ 에서 나오는 정점정보들은 정점들을 차례대로 방문하지는 않는다 그러나 어쨋든 Queue 가 비어지게 된다는 것은 더 이상 갱신할
+  //정점간의 정보가 없다는 것을 의미하므로 값을 얻는 데에는 문제가 없다.
 }
 
 int main() {
   freopen("sample_input.txt", "r", stdin);
   scanf("%d", &testNum);
-
+  initMap();
   for (int i = 0; i < testNum; i++) {
-    initTable();
     scanf("%d %d", &fromPrime, &toPrime);
+    initTable();
+    findAnswer();
+    printf("%d\n", minTouchnum[toPrime]);
 
-    for (int j = 0; j < 4; j++) {
-      for (int k = 0; k < 10; k++) {
-        dpTable[toPrime][j][k] = 0;
+    printf("\n1 =====================\n");
+    for (int i = 0; i < 10000; i++) {
+      if (minTouchnum[i] == 1) {
+        printf("%d ", i);
       }
     }
-
-    int retVal = INF;
-
-    for (int j = 0; j < 4; j++) {
-      for (int k = 0; k < 10; k++) {
-        retVal = MIN(retVal, DPFunc(fromPrime, j, k));
+    printf("\n2 =====================\n");
+    for (int i = 0; i < 10000; i++) {
+      if (minTouchnum[i] == 2) {
+        printf("%d ", i);
       }
     }
-
-    printf("%d\n", retVal);
+    printf("\n3 =====================\n");
+    for (int i = 0; i < 10000; i++) {
+      if (minTouchnum[i] == 3) {
+        printf("%d ", i);
+      }
+    }
+    printf("\n4 =====================\n");
+    for (int i = 0; i < 10000; i++) {
+      if (minTouchnum[i] == 4) {
+        printf("%d ", i);
+      }
+    }
+    printf("\n5 =====================\n");
+    for (int i = 0; i < 10000; i++) {
+      if (minTouchnum[i] == 5) {
+        printf("%d ", i);
+      }
+    }
+    printf("\n6 =====================\n");
+    for (int i = 0; i < 10000; i++) {
+      if (minTouchnum[i] == 6) {
+        printf("%d ", i);
+      }
+    }
+    printf("\n7 =====================\n");
+    for (int i = 0; i < 10000; i++) {
+      if (minTouchnum[i] == 7) {
+        printf("%d ", i);
+      }
+    }
   }
 }
-
-//모든 소수를 가지고 서로 바뀔수 있는 경우를 경로로 나타내고 다익스트라로 풀수도 있을 듯.
