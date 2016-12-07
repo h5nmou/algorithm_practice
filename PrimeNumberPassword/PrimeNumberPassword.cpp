@@ -169,48 +169,5 @@ int main() {
     initTable();
     findAnswer();
     printf("%d\n", minTouchnum[toPrime]);
-
-    printf("\n1 =====================\n");
-    for (int i = 0; i < 10000; i++) {
-      if (minTouchnum[i] == 1) {
-        printf("%d ", i);
-      }
-    }
-    printf("\n2 =====================\n");
-    for (int i = 0; i < 10000; i++) {
-      if (minTouchnum[i] == 2) {
-        printf("%d ", i);
-      }
-    }
-    printf("\n3 =====================\n");
-    for (int i = 0; i < 10000; i++) {
-      if (minTouchnum[i] == 3) {
-        printf("%d ", i);
-      }
-    }
-    printf("\n4 =====================\n");
-    for (int i = 0; i < 10000; i++) {
-      if (minTouchnum[i] == 4) {
-        printf("%d ", i);
-      }
-    }
-    printf("\n5 =====================\n");
-    for (int i = 0; i < 10000; i++) {
-      if (minTouchnum[i] == 5) {
-        printf("%d ", i);
-      }
-    }
-    printf("\n6 =====================\n");
-    for (int i = 0; i < 10000; i++) {
-      if (minTouchnum[i] == 6) {
-        printf("%d ", i);
-      }
-    }
-    printf("\n7 =====================\n");
-    for (int i = 0; i < 10000; i++) {
-      if (minTouchnum[i] == 7) {
-        printf("%d ", i);
-      }
-    }
   }
 }
