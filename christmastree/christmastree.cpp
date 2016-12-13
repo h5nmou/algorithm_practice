@@ -16,6 +16,7 @@ N과, 장난감의 수가 주어질 때, 트리를 장식하는 경우의 수를 출력하는 프로그램을 작
 #include <stdio.h>
 #include <stdlib.h>
 #include <functional>
+#include <string.h>//memset
 
 using namespace std;
 
@@ -34,23 +35,8 @@ long long int DPTable[11][101][101][101];
 long long int bojoMatrix[4][11];//[개의 색깔을 가지고][개의 칸을 채울수 있는 경우의 수] 단 두 색깔의 사용 횟수는 같아야 한다.
 
 void initTable() {
-  //memset(DPTable, -1, sizeof(DPTable));//메모리 초기화
-  //memset(bojoTable, -1, sizeof(bojoTable));//메모리 초기화
-  for (int i = 0; i < 11; i++) {
-    for (int j = 0; j < 101; j++) {
-      for (int k = 0; k < 101; k++) {
-        for (int l = 0; l < 101; l++) {
-          DPTable[i][j][k][l] = -1;
-        }
-      }
-    }
-  }
-
-  for (int k = 0; k < 4; k++) {
-    for (int l = 0; l < 11; l++) {
-      bojoMatrix[k][l] = -1;
-    }
-  }
+  memset(DPTable, -1, sizeof(DPTable));//메모리 초기화
+  memset(bojoMatrix, -1, sizeof(bojoMatrix));//메모리 초기화
 }
 
 void makebojoMatrixTable() {
